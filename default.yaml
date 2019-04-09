@@ -1,7 +1,1 @@
-relations:
-  - from:
-      fieldset: masterclass
-      field: pages
-    to:
-      fieldset: page
-      field: masterclass
+masterclass-pages: page-masterclass
