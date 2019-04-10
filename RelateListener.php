@@ -28,9 +28,9 @@ class RelateListener extends Listener
 
     public function saved(ContentSaved $event)
     {
-        $config = new Config($this->getConfig(), $event->data);
+        $config = new Config($this->getConfig());
 
-        $relations = $config->getRelations();
+        $relations = $config->getRelations($event->data);
         foreach ($relations as $relation) {
             $relation->setTargets();
         }
@@ -113,20 +113,13 @@ class Relation
           return Page::all();
       }
   }
-
-  public function sourceData()
-  {
-      $this->sourceData->get($this->sourceField->name());
-  }
-
 }
 
 class Config
 {
-    public function __construct($config = [], $sourceData)
+    public function __construct($config = [])
     {
         $this->relations = [];
-        $this->sourceData = $sourceData;
 
         // Build two-way bindings from config.
 
@@ -151,15 +144,15 @@ class Config
         }
     }
 
-    public function getRelations()
+    public function getRelations($sourceData)
     {
-        return array_reduce($this->relations, function($agg, $relation) {
-          $isFieldset = $this->sourceData->fieldset()->name() == $relation['source']['fieldset'];
-          $relations = $this->sourceData->get($relation['source']['field'], false);
+        return array_reduce($this->relations, function($agg, $relation) use ($sourceData) {
+          $isFieldset = $sourceData->fieldset()->name() == $relation['source']['fieldset'];
+          $relations = $sourceData->get($relation['source']['field'], false);
 
           if ($isFieldset && $relations) {
-            $sourceField = $this->sourceData->fieldset()->fields()[$relation['source']['field']];
-            return $agg + [new Relation($this->sourceData->id(), $relations, $sourceField, $relation['target'])];
+            $sourceField = $sourceData->fieldset()->fields()[$relation['source']['field']];
+            return $agg + [new Relation($sourceData->id(), $relations, $sourceField, $relation['target'])];
           } else {
             return $agg;
           }
