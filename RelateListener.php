@@ -41,6 +41,7 @@ class Relation
 {
   public function __construct($sourceID, $sourceRelations, $sourceField, $targetConfig)
   {
+
       $this->sourceID = $sourceID;
       $this->sourceRelations = is_array($sourceRelations) ? $sourceRelations : [$sourceRelations];
       $this->sourceField = $sourceField;
@@ -75,8 +76,12 @@ class Relation
 
           if (in_array($item->id(), $relations)) {
             // Ensure it's related
-            $targetFieldValue = array_unique(array_merge($targetFieldValue, [$foreignKey]));
-            $targetFieldValue = array_slice($targetFieldValue, 0, intval($limit));
+            if ($limit == 1) {
+              $targetFieldValue = $foreignKey;
+            } else {
+              $targetFieldValue = array_values(array_unique(array_merge($targetFieldValue, [$foreignKey])));
+              $targetFieldValue = array_slice($targetFieldValue, 0, intval($limit));
+            }
           } else {
             // Remove it
             $targetFieldValue = array_diff($targetFieldValue, [$foreignKey]);
@@ -87,7 +92,7 @@ class Relation
           } else {
             $item->set(
                 $this->targetConfig['field'],
-                array_values($targetFieldValue)
+                $targetFieldValue
             );
           }
 
@@ -146,17 +151,18 @@ class Config
 
     public function getRelations($sourceData)
     {
-        return array_reduce($this->relations, function($agg, $relation) use ($sourceData) {
-          $isFieldset = $sourceData->fieldset()->name() == $relation['source']['fieldset'];
-          $relations = $sourceData->get($relation['source']['field'], false);
+        $agg = [];
+        foreach ($this->relations as $config) {
+          $isFieldset = $sourceData->fieldset()->name() == $config['source']['fieldset'];
+          $relations = $sourceData->get($config['source']['field'], false);
 
           if ($isFieldset && $relations) {
-            $sourceField = $sourceData->fieldset()->fields()[$relation['source']['field']];
-            return $agg + [new Relation($sourceData->id(), $relations, $sourceField, $relation['target'])];
-          } else {
-            return $agg;
+            $sourceField = $sourceData->fieldset()->fields()[$config['source']['field']];
+            $relation = new Relation($sourceData->id(), $relations, $sourceField, $config['target']);
+            array_push($agg, $relation);
           }
-        }, []);
+        }
+        return $agg;
     }
 
     public function getTargets($fieldset, $field)
